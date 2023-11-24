@@ -1,105 +1,154 @@
-import { createSlice } from "@reduxjs/toolkit";
-
-
-const todos = createSlice({
-    name:'todos',
-    initialState:{
-        data:[
-            {
-                id:1,
-                title:"Redux",
-                complete:false
-            },
-            {
-                id:2,
-                title:"Redux2",
-                complete:false
-            },
-            {
-                id:3,
-                title:"Redux3",
-                complete:false
-            },
-            {
-                id:4,
-                title:"Redux4",
-                complete:false
-            },
-            {
-                id:5,
-                title:"Redux5",
-                complete:false
-            }
-        ],
-        text:'',
-        modal:false,
-        text2:'',
-        idx:null,
-        fil:'All',
-        search:''
-
-    },
-    reducers:{
-
-        setText: (state,action) => {
-            state.text = action.payload
-        },
-
-        deletUser: (state, action) =>{
-            state.data = state.data.filter((e)=>{
-                return e.id != action.payload
-            })
-        },
-        addUser:(state,action) =>{
-            let newObj = {
-                id:Date.now(),
-                title:state.text,
-                complete:false
-            }
-            state.data.push(newObj)
-            state.text = ''
-        },
-        checkUser:(state,action) =>{
-            state.data = state.data.map((e)=>{
-                if(action.payload == e.id){
-                    e.complete= !e.complete
-                }
-                return e
-            })
-        },  
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import axios from "axios";
 
 
 
-        handleChange :(state, action) =>{
-            state[action.payload.type] = action.payload.setType 
-        },
+let api = ' http://localhost:3000/data'
 
-        // handleChange:(state,action) =>{
-        //     state[action.payload.type] = action.payload.setType
-        // },
-        editUser:(state,action) =>{
-            state.idx = action.payload.id
-            state.text2 = action.payload.title
-            state.modal = true
-        },
 
-        editTodo:(state,action) =>{
-            state.data = state.data.map((e)=>{
-                console.log(state.idx);
-                if(e.id == state.idx){
-                    e.title = state.text2
-                }
-                return e
-            })
-            console.log(state.data);
-            state.modal = false
+export const getData = createAsyncThunk(
+    'todos/getData',
+    async function(_, {getState}){
+        let api2 = api
+
+        if(getState().todos.length !== 0){
+            api2 = `${api}?q=${getState().todos.search}`
         }
 
-        
+        try {
+            const {data} = await axios.get(api2)
+            return data
+        } catch (error) {
+            
+        }
     }
+)
 
+
+
+
+export const deletUser = createAsyncThunk(
+    'todos/deletUser',
+    async function(id, {dispatch}){
+        try {
+            const {data} = await axios.delete(`${api}/${id}`)
+            dispatch(getData())
+        } catch (error) {
+            console.log(error);
+        }
+    }
+)
+
+export const checkUser = createAsyncThunk(
+    'todos/checkUser',
+    async function(check, {dispatch}){
+
+        try {
+            const {data} = await axios.put(`${api}/${check.id}`,{
+                title:check.title,
+                bg:check.bg,
+                complite:!check.complite
+            })
+            dispatch(getData())
+        } catch (error) {
+            console.log(error);
+        }
+    }
+)
+
+
+
+export const editUser = createAsyncThunk(
+    'todos/editUser',
+    async function(check, {dispatch}){
+
+        try {
+            const {data} = await axios.put(`${api}/${check.id}`,{
+                title:check.title,
+                bg:check.bg,
+                complite:!check.complite
+            })
+            dispatch(getData())
+        } catch (error) {
+            console.log(error);
+        }
+    }
+)
+
+
+
+export const addUser = createAsyncThunk(
+    'todos/addUser',
+    async function(id, {dispatch,getState}){
+
+        let text = getState().todos.text;
+        let bg = getState().todos.bg;
+
+        try {
+
+            let newUser ={
+                title:text,
+                bg:bg,
+                complite:false
+            }
+
+            const {data} = await axios.post(api, newUser)
+            dispatch(getData())
+        } catch (error) {
+            console.log(error);
+        }
+    }
+)
+
+
+
+
+
+
+
+
+
+
+
+export const todos = createSlice({
+    name:'todos',
+    initialState:{
+        data:[],
+        text:'',
+        text2:'',
+        bg2:'',
+        idx:null,
+        search:'',
+        modal:false,
+        bg:'',
+        loading:false
+    },
+    reducers:{
+        handlechange:(state,action) =>{
+            state[action.payload.type] = action.payload.setType
+        },
+        handleModal:(state,action) =>{
+          state.idx = action.payload.id
+          state.modal = true
+          state.text2 = action.payload.title
+          state.bg2 = action.payload.bg
+        },
+      
+    },
+    extraReducers:(builder) => {
+        builder.addCase(getData.pending,(state,action) =>{
+            state.loading = true
+        });
+        builder.addCase(getData.fulfilled,(state,action) =>{
+            state.data = action.payload
+            state.text = ''
+        });
+        builder.addCase(getData.rejected,(state,action) =>{
+            state.loading.false
+        });
+    }
+  
 })
 
-export const {deletUser,setText,checkUser,handleChange,addUser,editTodo,editUser} = todos.actions;
-
+export const {handlechange,handleModal} = todos.actions
 export default todos.reducer
